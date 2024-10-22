@@ -13,6 +13,7 @@ class CreateNewGame extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFF00703C),
         title: const Text('New Game'),
       ),
       body: Column(
@@ -47,6 +48,10 @@ class CreateNewGame extends StatelessWidget {
           ),
           const SizedBox(height: 40),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00703C),
+                foregroundColor: Colors.white,
+              ),
             onPressed: () {
               // Navigate to the Game page with names
               Navigator.push(
