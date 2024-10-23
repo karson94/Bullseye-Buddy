@@ -1,0 +1,38 @@
+name: Flutter Firebase Deploy
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install Flutter
+        run: |
+          git clone https://github.com/flutter/flutter.git -b stable
+          echo "${{ github.workspace }}/flutter/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          flutter pub get
+
+      - name: Build web app
+        run: |
+          flutter build web
+
+      - name: Deploy to Firebase
+        uses: wzieba/Firebase-Hosting-Action@v2.0.0
+        with:
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+          channelId: live
+          workingDirectory: build/web
