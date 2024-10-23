@@ -30,6 +30,63 @@ class MyApp extends StatelessWidget {
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
         fontFamily: 'Roboto',
+        textTheme: const TextTheme(
+          // Set default font weight to 700 (bold) for different text styles
+          bodyLarge: TextStyle(fontWeight: FontWeight.w700),
+          bodyMedium: TextStyle(fontWeight: FontWeight.w500),
+          bodySmall: TextStyle(fontWeight: FontWeight.w300),
+          headlineLarge: TextStyle(fontWeight: FontWeight.w700),
+          headlineMedium: TextStyle(fontWeight: FontWeight.w500),
+          headlineSmall: TextStyle(fontWeight: FontWeight.w300),
+          titleLarge: TextStyle(fontWeight: FontWeight.w700),
+          titleMedium: TextStyle(fontWeight: FontWeight.w500),
+          titleSmall: TextStyle(fontWeight: FontWeight.w300),
+        ),
+
+                // Customize TextButton (default font, weight, and size)
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0), // Add standard padding
+            textStyle: const TextStyle(
+              fontFamily: 'Roboto',  // Set default font for TextButtons
+              fontWeight: FontWeight.w700,  // Set default weight (bold)
+              fontSize: 16,  // Set default font size for buttons
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8), // Sharpen corner radius
+            ),
+          ),
+        ),
+
+        // Customize ElevatedButton (default font, weight, and size)
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0), // Add standard padding
+            textStyle: const TextStyle(
+              fontFamily: 'Roboto',  // Set default font for ElevatedButtons
+              fontWeight: FontWeight.w700,  // Set default weight (bold)
+              fontSize: 16,  // Set default font size for buttons
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8), // Sharpen corner radius
+            ),
+          ),
+        ),
+
+        // Customize OutlinedButton (default font, weight, and size)
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0), // Add standard padding
+            textStyle: const TextStyle(
+              fontFamily: 'Roboto',  // Set default font for OutlinedButtons
+              fontWeight: FontWeight.w700,  // Set default weight (bold)
+              fontSize: 16,  // Set default font size for buttons
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8), // Sharpen corner radius
+            ),
+          ),
+        ),
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightGreen.shade900),
         useMaterial3: true,
       ),
@@ -108,7 +165,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 foregroundColor: Colors.white,
               ),
               onPressed: _createNewGame,
-              child: const Text('Create a New Game', style: TextStyle(fontSize: 30)),
+              child: const Text('Create a New Game', style: TextStyle(fontSize: 30,),),
             ), // This trailing comma makes auto-formatting nicer for build methods.
           ],
         ),

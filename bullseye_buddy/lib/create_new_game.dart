@@ -58,8 +58,7 @@ class CreateNewGame extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => Game(
-                    player1Name: player1Controller.text,
-                    player2Name: player2Controller.text,
+                    playerNames: [player1Controller.text, player2Controller.text],
                   ),
                 ),
               );
