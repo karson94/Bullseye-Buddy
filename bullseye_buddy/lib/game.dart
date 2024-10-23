@@ -12,8 +12,17 @@ class Game extends StatefulWidget {
 
 class _GameState extends State<Game> {
   int roundCounter = 1; // Initialize round counter
+  bool currentPlayer = false;
   Map<String, int> scores = {};
-  late List<List<List<int>>> playerScores;
+  late List<List<List<int>>> throwScoreStorage;
+
+  final TextEditingController player1Controller = TextEditingController();
+  final TextEditingController player2Controller = TextEditingController();
+
+  int player1ThrowCount = 0; // Track throws for Player 1
+  int player2ThrowCount = 0; // Track throws for Player 2
+
+  bool isPlayer1Turn = true;  // Track whose turn it is
 
   @override
   void initState() {
@@ -23,10 +32,9 @@ class _GameState extends State<Game> {
       widget.playerNames[1]: 301,
     }; // Initialize scores in initState
 
-      playerScores = List.generate(
-      widget.playerNames.length,
-      (_) => [], // Each player starts with an empty list of rounds
-    ); // Initialize playerScores in initState
+     throwScoreStorage = [
+      [[], []], // Round 1: Alice's throws and Bob's throws
+   ]; // Initialize playerScores in initState
   }
 
   void _showRules(BuildContext context) {
@@ -57,22 +65,83 @@ class _GameState extends State<Game> {
     );
   }
 
-  void _incrementRound() {
-    roundCounter++; // Increment the round counter
+  void _nextRound() {
+    setState(() {
+      roundCounter++; // Increment the round counter
+      throwScoreStorage.add([[], []]); // Add a new round with empty throws
+      print('New Round # $roundCounter');
+    });
   }
 
   void _updateScore(String player, int throwScore) {
-    int result = (scores[player] ?? 0) - throwScore;
-    if(result > 0){
-      scores[player] = result;
-    }else if(result == 0){
-      _gameWin(player);
-    }else{
-      // _playerBust(player);
+    int currentScore = scores[player] ?? 0; // Get the current score for the player
+    int newScore = currentScore - throwScore; // Calculate the new score
+
+    setState(() { // Notify the framework to rebuild the widget
+        if (newScore > 0) {
+            scores[player] = newScore; // Update the score if it's still positive
+            print('Updated score for $player: ${scores[player]}');
+        } else if (newScore == 0) {
+            _gameWin(player); // Call game win if score reaches zero
+        } else {
+            // Handle bust scenario (if needed)
+            print('$player busted! Score cannot go below zero.');
+        }
+    });
+}
+
+  void _addThrow(String player, int throwValue) {
+    int playerIndex = widget.playerNames.indexOf(player);
+    if (playerIndex != -1) {
+      // Add throw to the correct player's list
+      throwScoreStorage[roundCounter - 1][playerIndex].add(throwValue);
+      print('Added throw: $throwValue for player: $player');
+      print('Updated throwScoreStorage: $throwScoreStorage');
+
+      // Update the player's score
+      _updateScore(player, throwValue);
+    } else {
+      print('Player not found: $player');
     }
   }
 
-  void _gameWin(String player) {
+  void _handlePlayerInput(String value, bool isPlayer1) {
+    if (value.isNotEmpty) {
+      int? throwValue = int.tryParse(value);
+      if (throwValue != null) {
+        if (isPlayer1 && isPlayer1Turn) {
+          _addThrow(widget.playerNames[0], throwValue);
+          player1ThrowCount++;
+          player1Controller.clear(); // Clear the input field after submission
+
+          // Check if Player 1 has completed 3 throws
+          if (player1ThrowCount >= 3) {
+            isPlayer1Turn = false; // Switch to Player 2
+            player1ThrowCount = 0; // Reset Player 1's throw count
+            print('Player 1 has completed 3 throws. Now it\'s Player 2\'s turn.');
+          }
+        } else if (!isPlayer1 && !isPlayer1Turn) {
+          _addThrow(widget.playerNames[1], throwValue);
+          player2ThrowCount++;
+          player2Controller.clear();
+
+          // Check if Player 2 has completed 3 throws
+          if (player2ThrowCount >= 3) {
+            isPlayer1Turn = true; // Switch back to Player 1
+            player2ThrowCount = 0; // Reset Player 2's throw count
+            _nextRound();
+            print('Player 2 has completed 3 throws. Now it\'s Player 1\'s turn for the next round.');
+          }
+        } else {
+          print('It\'s not your turn!');
+        }
+      } else {
+        print('Invalid input: $value is not a number');
+      }
+    }
+  }
+
+    void _gameWin(String player) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -149,7 +218,30 @@ class _GameState extends State<Game> {
                           children: [
                             Text(widget.playerNames[0], style: const TextStyle(fontSize: 24)), // Display Player 1 name
                           ], 
-                        ),  
+                        ), 
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
+                          children: [
+                            Text('Score: ${scores[widget.playerNames[0]].toString()}',), // Display Player 1 name
+                          ], 
+                        ), 
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
+                          children: [
+                            if(isPlayer1Turn)
+                              Container(
+                                width: 200, // Define a width
+                                child: TextField(
+                                  controller: player1Controller,
+                                  keyboardType: TextInputType.number,
+                                  onSubmitted: (value) => _handlePlayerInput(value, true),
+                                  decoration: InputDecoration(
+                                    hintText: 'Enter throw value for ${widget.playerNames[0]}',
+                                  ),
+                                ),
+                              ),
+                          ], 
+                        ),   
                       ],
                     ),
                   ),
@@ -164,6 +256,29 @@ class _GameState extends State<Game> {
                             Text(widget.playerNames[1], style: const TextStyle(fontSize: 24)), // Display Player 2 name
                           ],
                         ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
+                          children: [
+                            Text('Score: ${scores[widget.playerNames[1]].toString()}',), // Display Player 1 name
+                          ], 
+                        ), 
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
+                          children: [
+                            if(!isPlayer1Turn)
+                              Container(
+                                width: 200, // Define a width
+                                child: TextField(
+                                  controller: player2Controller,
+                                  keyboardType: TextInputType.number,
+                                  onSubmitted: (value) => _handlePlayerInput(value, false),
+                                  decoration: InputDecoration(
+                                    hintText: 'Enter throw value for ${widget.playerNames[1]}',
+                                  ),
+                                ),
+                              ),
+                          ], 
+                        ), 
                       ],
                     ),
                   ),
