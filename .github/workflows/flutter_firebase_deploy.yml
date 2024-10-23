@@ -22,17 +22,18 @@ jobs:
           echo "${{ github.workspace }}/flutter/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
+        working-directory: bullseye_buddy
         run: |
           flutter pub get
 
       - name: Build web app
+        working-directory: bullseye_buddy
         run: |
           flutter build web
 
       - name: Deploy to Firebase
-        uses: wzieba/Firebase-Hosting-Action@v2.0.0
+        uses: FirebaseExtended/action-hosting-deploy@v0.9.0
         with:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
           channelId: live
-          workingDirectory: build/web

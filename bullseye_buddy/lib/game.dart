@@ -13,7 +13,7 @@ class Game extends StatelessWidget {
         return AlertDialog(
           title: const Text('Game Rules'),
           content: const Text(
-            '1. Stand behind black line.\n'
+            '1. Stand behind the black line.\n'
             '2. Each person throws 3 darts per turn.\n'
             '3. Sum of all throws per turn is added to score.\n'
             '4. First to 301 wins. After a player reaches exactly 301, the game ends.\n'
