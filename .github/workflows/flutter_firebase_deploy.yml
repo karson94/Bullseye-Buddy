@@ -22,10 +22,12 @@ jobs:
           echo "${{ github.workspace }}/flutter/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
+        working-directory: bullseye_buddy
         run: |
           flutter pub get
 
       - name: Build web app
+        working-directory: bullseye_buddy
         run: |
           flutter build web
 
