@@ -197,90 +197,170 @@ class _GameState extends State<Game> {
 
             const SizedBox(height: 20),
 
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00703C),
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () => _gameWin(widget.playerNames[0]), // Show game rules when pressed
-              child: const Text('Win Game [test]'), // Button text
-            ),
+            // ElevatedButton(
+            //   style: ElevatedButton.styleFrom(
+            //     backgroundColor: const Color(0xFF00703C),
+            //     foregroundColor: Colors.white,
+            //   ),
+            //   onPressed: () => _gameWin(widget.playerNames[0]), // Show game rules when pressed
+            //   child: const Text('Win Game [test]'), // Button text
+            // ),
 
             Expanded( // Allow the Row to take full height
               child: Row( // Row to hold player columns
                 children: [
                   Expanded( // Player 1 Column
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start, // Center content vertically
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
-                          children: [
-                            Text(widget.playerNames[0], style: const TextStyle(fontSize: 24)), // Display Player 1 name
-                          ], 
-                        ), 
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
-                          children: [
-                            Text('Score: ${scores[widget.playerNames[0]].toString()}',), // Display Player 1 name
-                          ], 
-                        ), 
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
-                          children: [
-                            if(isPlayer1Turn)
-                              Container(
-                                width: 200, // Define a width
-                                child: TextField(
-                                  controller: player1Controller,
-                                  keyboardType: TextInputType.number,
-                                  onSubmitted: (value) => _handlePlayerInput(value, true),
-                                  decoration: InputDecoration(
-                                    hintText: 'Enter throw value for ${widget.playerNames[0]}',
+
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start, // Center content vertically
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
+                            children: [
+                              Text(widget.playerNames[0], style: const TextStyle(fontSize: 24)), // Display Player 1 name
+                            ], 
+                          ), 
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
+                            children: [
+                              Text('Score: ${scores[widget.playerNames[0]].toString()}',), // Display Player 1 score
+                            ], 
+                          ), 
+                          SizedBox(
+                            height: 80,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
+                              children: [
+                                const SizedBox(height: 20),
+                                if(isPlayer1Turn)
+                                  Container(
+                                    width: 100, // Define a width
+                                    child: TextField(
+                                      controller: player1Controller,
+                                      keyboardType: TextInputType.number,
+                                      textAlign: TextAlign.center,
+                                      decoration: InputDecoration(
+                                        hintText: 'Throw ${player1ThrowCount + 1}',
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                          ], 
-                        ),   
-                      ],
-                    ),
+                                  const SizedBox(width: 20),
+                                if(isPlayer1Turn)
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF00703C),
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: () {
+                                      String value = player1Controller.text;
+                                      _handlePlayerInput(value, true);
+                                      player1Controller.clear(); // Clear the input field after submission
+                                    },
+                                    child: const Text('Submit'), // Button text
+                                  ),
+                              ], 
+                            ),
+                          ),
+
+                          const SizedBox(height: 20), // Space between input and throws
+                          
+                          // Display throws for Player 1
+                          SingleChildScrollView(
+                            scrollDirection: Axis.vertical, // Set the scroll direction to vertical
+                            child: Column(
+                              children: throwScoreStorage
+                                  .map((round) => Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text('Round ${throwScoreStorage.indexOf(round) + 1}: ', style: Theme.of(context).textTheme.bodyLarge),
+                                          ...round[0].map((throwValue) => Text('$throwValue ', style: Theme.of(context).textTheme.bodyLarge)).toList(), // Display Player 1's throws
+                                        ],
+                                      ))
+                                  .toList(),
+                            ),
+                          ),
+
+                        ],
+                      ),
+
                   ),
+
                   const VerticalDivider(width: 1), // Divider between player columns
+
                   Expanded( // Player 2 Column
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start, // Center content vertically
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
-                          children: [
-                            Text(widget.playerNames[1], style: const TextStyle(fontSize: 24)), // Display Player 2 name
-                          ],
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
-                          children: [
-                            Text('Score: ${scores[widget.playerNames[1]].toString()}',), // Display Player 1 name
-                          ], 
-                        ), 
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
-                          children: [
-                            if(!isPlayer1Turn)
-                              Container(
-                                width: 200, // Define a width
-                                child: TextField(
-                                  controller: player2Controller,
-                                  keyboardType: TextInputType.number,
-                                  onSubmitted: (value) => _handlePlayerInput(value, false),
-                                  decoration: InputDecoration(
-                                    hintText: 'Enter throw value for ${widget.playerNames[1]}',
+
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start, // Center content vertically
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
+                            children: [
+                              Text(widget.playerNames[1], style: const TextStyle(fontSize: 24)), // Display Player 2 name
+                            ], 
+                          ), 
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
+                            children: [
+                              Text('Score: ${scores[widget.playerNames[1]].toString()}',), // Display Player 2 score
+                            ], 
+                          ), 
+                          SizedBox(
+                            height: 80,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
+                              children: [
+                                const SizedBox(height: 20),
+                                if(!isPlayer1Turn) // Change condition to check for Player 2's turn
+                                  Container(
+                                    width: 100, // Define a width
+                                    child: TextField(
+                                      controller: player2Controller, // Change controller to player2Controller
+                                      keyboardType: TextInputType.number,
+                                      textAlign: TextAlign.center,
+                                      decoration: InputDecoration(
+                                        hintText: 'Throw ${player2ThrowCount + 1}', // Change hint text for Player 2
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                          ], 
-                        ), 
-                      ],
-                    ),
+                                  const SizedBox(width: 20),
+                                if(!isPlayer1Turn) // Change condition to check for Player 2's turn
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF00703C),
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: () {
+                                      String value = player2Controller.text; // Change to player2Controller
+                                      _handlePlayerInput(value, false); // Change to false for Player 2
+                                      player2Controller.clear(); // Clear the input field after submission
+                                    },
+                                    child: const Text('Submit'), // Button text
+                                  ),
+                              ], 
+                            ),
+                          ),
+
+                          const SizedBox(height: 20), // Space between input and throws
+                          
+                          // Display throws for Player 2
+                          SingleChildScrollView(
+                            scrollDirection: Axis.vertical, // Set the scroll direction to vertical
+                            child: Column(
+                              children: throwScoreStorage
+                                  .map((round) => Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text('Round ${throwScoreStorage.indexOf(round) + 1}: ', style: Theme.of(context).textTheme.bodyLarge),
+                                          ...round[1].map((throwValue) => Text('$throwValue ', style: Theme.of(context).textTheme.bodyLarge)).toList(), // Display Player 2's throws
+                                        ],
+                                      ))
+                                  .toList(),
+                            ),
+                          ),
+
+                        ],
+                      ),
+
                   ),
                 ],
               ),
