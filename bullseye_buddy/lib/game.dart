@@ -24,6 +24,8 @@ class _GameState extends State<Game> {
 
   bool isPlayer1Turn = true;  // Track whose turn it is
 
+  int multiplier = 1; // Default multiplier
+
   @override
   void initState() {
     super.initState();
@@ -233,6 +235,22 @@ class _GameState extends State<Game> {
                               children: [
                                 const SizedBox(height: 20),
                                 if(isPlayer1Turn)
+                                // Single button to toggle multiplier
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF00703C),
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        // Cycle through multipliers
+                                        multiplier = (multiplier % 3) + 1; // Cycle between 1, 2, and 3
+                                      });
+                                    },
+                                    child: Text('${multiplier}x'), // Display current multiplier
+                                  ),
+                                const SizedBox(width: 20),
+                                if(isPlayer1Turn)
                                   Container(
                                     width: 100, // Define a width
                                     child: TextField(
@@ -253,7 +271,8 @@ class _GameState extends State<Game> {
                                     ),
                                     onPressed: () {
                                       String value = player1Controller.text;
-                                      _handlePlayerInput(value, true);
+                                      int throwValue = int.tryParse(value) ?? 0; // Parse input value
+                                      _handlePlayerInput((throwValue * multiplier).toString(), true); // Convert to String
                                       player1Controller.clear(); // Clear the input field after submission
                                     },
                                     child: const Text('Submit'), // Button text
@@ -310,6 +329,22 @@ class _GameState extends State<Game> {
                               mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
                               children: [
                                 const SizedBox(height: 20),
+                                if(!isPlayer1Turn)
+                                  // New toggle buttons for multiplier
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF00703C),
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        // Cycle through multipliers
+                                        multiplier = (multiplier % 3) + 1; // Cycle between 1, 2, and 3
+                                      });
+                                    },
+                                    child: Text('${multiplier}x'), // Display current multiplier
+                                  ),
+                                const SizedBox(width: 20),
                                 if(!isPlayer1Turn) // Change condition to check for Player 2's turn
                                   Container(
                                     width: 100, // Define a width
