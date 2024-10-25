@@ -6,37 +6,41 @@ class Game extends StatefulWidget {
   const Game({super.key, required this.playerNames});
 
   @override
-  // ignore: library_private_types_in_public_api
   _GameState createState() => _GameState();
 }
 
 class _GameState extends State<Game> {
-  int roundCounter = 1; // Initialize round counter
-  bool currentPlayer = false;
+  int roundCounter = 1;
   Map<String, int> scores = {};
   late List<List<List<int>>> throwScoreStorage;
 
   final TextEditingController player1Controller = TextEditingController();
   final TextEditingController player2Controller = TextEditingController();
 
-  int player1ThrowCount = 0; // Track throws for Player 1
-  int player2ThrowCount = 0; // Track throws for Player 2
-
-  bool isPlayer1Turn = true;  // Track whose turn it is
-
-  int multiplier = 1; // Default multiplier
+  int player1ThrowCount = 0;
+  int player2ThrowCount = 0;
+  bool isPlayer1Turn = true;
+  bool isPlayer2Turn = false; // New flag for Player 2
+  int multiplier = 1;
 
   @override
   void initState() {
     super.initState();
+    initializeScores();
+    initializeThrowStorage();
+  }
+
+  void initializeScores() {
     scores = {
       widget.playerNames[0]: 301,
       widget.playerNames[1]: 301,
-    }; // Initialize scores in initState
+    };
+  }
 
-     throwScoreStorage = [
-      [[], []], // Round 1: Alice's throws and Bob's throws
-   ]; // Initialize playerScores in initState
+  void initializeThrowStorage() {
+    throwScoreStorage = [
+      [[], []],
+    ];
   }
 
   void _showRules(BuildContext context) {
@@ -44,20 +48,19 @@ class _GameState extends State<Game> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('301 Game Rules', style: Theme.of(context).textTheme.bodyLarge,),
+          title: Text('301 Game Rules', style: Theme.of(context).textTheme.bodyLarge),
           content: Text(
-            style: Theme.of(context).textTheme.bodyMedium,
             '1. Stand behind black line.\n'
             '2. Each person throws 3 darts per turn.\n'
             '3. Sum of all throws per turn is subtracted from score.\n'
             '4. Once a player\'s score reaches exactly 0, the game is over and that player wins.\n'
-            '5. If a player busts (goes over 301 during their turn), '
-            'their turn is over and any points scored this turn are nullified.\n',
+            '5. If a player busts (goes over 301 during their turn), their turn is over and any points scored this turn are nullified.\n',
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
           actions: <Widget>[
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
+                Navigator.of(context).pop();
               },
               child: const Text('Close'),
             ),
@@ -69,38 +72,33 @@ class _GameState extends State<Game> {
 
   void _nextRound() {
     setState(() {
-      roundCounter++; // Increment the round counter
-      throwScoreStorage.add([[], []]); // Add a new round with empty throws
+      roundCounter++;
+      throwScoreStorage.add([[], []]);
       print('New Round # $roundCounter');
     });
   }
 
   void _updateScore(String player, int throwScore) {
-    int currentScore = scores[player] ?? 0; // Get the current score for the player
-    int newScore = currentScore - throwScore; // Calculate the new score
+    int currentScore = scores[player] ?? 0;
+    int newScore = currentScore - throwScore;
 
-    setState(() { // Notify the framework to rebuild the widget
-        if (newScore > 0) {
-            scores[player] = newScore; // Update the score if it's still positive
-            print('Updated score for $player: ${scores[player]}');
-        } else if (newScore == 0) {
-            _gameWin(player); // Call game win if score reaches zero
-        } else {
-            // Handle bust scenario (if needed)
-            print('$player busted! Score cannot go below zero.');
-        }
+    setState(() {
+      if (newScore > 0) {
+        scores[player] = newScore;
+        print('Updated score for $player: ${scores[player]}');
+      } else if (newScore == 0) {
+        _gameWin(player);
+      } else {
+        print('$player busted! Score cannot go below zero.');
+      }
     });
-}
+  }
 
   void _addThrow(String player, int throwValue) {
     int playerIndex = widget.playerNames.indexOf(player);
     if (playerIndex != -1) {
-      // Add throw to the correct player's list
       throwScoreStorage[roundCounter - 1][playerIndex].add(throwValue);
       print('Added throw: $throwValue for player: $player');
-      print('Updated throwScoreStorage: $throwScoreStorage');
-
-      // Update the player's score
       _updateScore(player, throwValue);
     } else {
       print('Player not found: $player');
@@ -112,28 +110,9 @@ class _GameState extends State<Game> {
       int? throwValue = int.tryParse(value);
       if (throwValue != null) {
         if (isPlayer1 && isPlayer1Turn) {
-          _addThrow(widget.playerNames[0], throwValue);
-          player1ThrowCount++;
-          player1Controller.clear(); // Clear the input field after submission
-
-          // Check if Player 1 has completed 3 throws
-          if (player1ThrowCount >= 3) {
-            isPlayer1Turn = false; // Switch to Player 2
-            player1ThrowCount = 0; // Reset Player 1's throw count
-            print('Player 1 has completed 3 throws. Now it\'s Player 2\'s turn.');
-          }
-        } else if (!isPlayer1 && !isPlayer1Turn) {
-          _addThrow(widget.playerNames[1], throwValue);
-          player2ThrowCount++;
-          player2Controller.clear();
-
-          // Check if Player 2 has completed 3 throws
-          if (player2ThrowCount >= 3) {
-            isPlayer1Turn = true; // Switch back to Player 1
-            player2ThrowCount = 0; // Reset Player 2's throw count
-            _nextRound();
-            print('Player 2 has completed 3 throws. Now it\'s Player 1\'s turn for the next round.');
-          }
+          _processPlayerThrow(widget.playerNames[0], throwValue, true);
+        } else if (!isPlayer1 && isPlayer2Turn) {
+          _processPlayerThrow(widget.playerNames[1], throwValue, false);
         } else {
           print('It\'s not your turn!');
         }
@@ -143,7 +122,31 @@ class _GameState extends State<Game> {
     }
   }
 
-    void _gameWin(String player) {
+  void _processPlayerThrow(String player, int throwValue, bool isPlayer1) {
+    _addThrow(player, throwValue);
+    if (isPlayer1) {
+      player1ThrowCount++;
+      player1Controller.clear();
+      if (player1ThrowCount >= 3) {
+        isPlayer1Turn = false;
+        isPlayer2Turn = true; // Set Player 2's turn
+        player1ThrowCount = 0;
+        print('Player 1 has completed 3 throws. Now it\'s Player 2\'s turn.');
+      }
+    } else {
+      player2ThrowCount++;
+      player2Controller.clear();
+      if (player2ThrowCount >= 3) {
+        isPlayer2Turn = false; // Reset Player 2's turn
+        isPlayer1Turn = true; // Set Player 1's turn
+        player2ThrowCount = 0;
+        _nextRound();
+        print('Player 2 has completed 3 throws. Now it\'s Player 1\'s turn for the next round.');
+      }
+    }
+  }
+
+  void _gameWin(String player) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -156,7 +159,7 @@ class _GameState extends State<Game> {
           actions: <Widget>[
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
+                Navigator.of(context).pop();
               },
               child: const Text('Close'),
             ),
@@ -171,238 +174,156 @@ class _GameState extends State<Game> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF00703C),
-        title: const Text('Tracker'), // Title of the app
+        title: const Text('Tracker'),
       ),
       body: Center(
-
-        child: Column( // Main layout for the screen
-          mainAxisAlignment: MainAxisAlignment.start, // Align children to the start
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center, // Align button to the right
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(10.0), // Padding around the button
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00703C),
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: () => _showRules(context), // Show game rules when pressed
-                    child: const Text('Show Rules'), // Button text
-                  ),
-                ),
-              ],
-            ),
-            
-            Text('Round: $roundCounter', style: const TextStyle(fontSize: 40)), // Display round counter
-
+            _buildShowRulesButton(context),
+            Text('Round: $roundCounter', style: const TextStyle(fontSize: 40)),
             const SizedBox(height: 20),
-
-            // ElevatedButton(
-            //   style: ElevatedButton.styleFrom(
-            //     backgroundColor: const Color(0xFF00703C),
-            //     foregroundColor: Colors.white,
-            //   ),
-            //   onPressed: () => _gameWin(widget.playerNames[0]), // Show game rules when pressed
-            //   child: const Text('Win Game [test]'), // Button text
-            // ),
-
-            Expanded( // Allow the Row to take full height
-              child: Row( // Row to hold player columns
+            Expanded(
+              child: Row(
                 children: [
-                  Expanded( // Player 1 Column
-
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start, // Center content vertically
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
-                            children: [
-                              Text(widget.playerNames[0], style: const TextStyle(fontSize: 24)), // Display Player 1 name
-                            ], 
-                          ), 
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
-                            children: [
-                              Text('Score: ${scores[widget.playerNames[0]].toString()}',), // Display Player 1 score
-                            ], 
-                          ), 
-                          SizedBox(
-                            height: 80,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
-                              children: [
-                                const SizedBox(height: 20),
-                                if(isPlayer1Turn)
-                                // Single button to toggle multiplier
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF00703C),
-                                      foregroundColor: Colors.white,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        // Cycle through multipliers
-                                        multiplier = (multiplier % 3) + 1; // Cycle between 1, 2, and 3
-                                      });
-                                    },
-                                    child: Text('${multiplier}x'), // Display current multiplier
-                                  ),
-                                const SizedBox(width: 20),
-                                if(isPlayer1Turn)
-                                  Container(
-                                    width: 100, // Define a width
-                                    child: TextField(
-                                      controller: player1Controller,
-                                      keyboardType: TextInputType.number,
-                                      textAlign: TextAlign.center,
-                                      decoration: InputDecoration(
-                                        hintText: 'Throw ${player1ThrowCount + 1}',
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 20),
-                                if(isPlayer1Turn)
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF00703C),
-                                      foregroundColor: Colors.white,
-                                    ),
-                                    onPressed: () {
-                                      String value = player1Controller.text;
-                                      int throwValue = int.tryParse(value) ?? 0; // Parse input value
-                                      _handlePlayerInput((throwValue * multiplier).toString(), true); // Convert to String
-                                      player1Controller.clear(); // Clear the input field after submission
-                                    },
-                                    child: const Text('Submit'), // Button text
-                                  ),
-                              ], 
-                            ),
-                          ),
-
-                          const SizedBox(height: 20), // Space between input and throws
-                          
-                          // Display throws for Player 1
-                          SingleChildScrollView(
-                            scrollDirection: Axis.vertical, // Set the scroll direction to vertical
-                            child: Column(
-                              children: throwScoreStorage
-                                  .map((round) => Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Text('Round ${throwScoreStorage.indexOf(round) + 1}: ', style: Theme.of(context).textTheme.bodyLarge),
-                                          ...round[0].map((throwValue) => Text('$throwValue ', style: Theme.of(context).textTheme.bodyLarge)).toList(), // Display Player 1's throws
-                                        ],
-                                      ))
-                                  .toList(),
-                            ),
-                          ),
-
-                        ],
-                      ),
-
-                  ),
-
-                  const VerticalDivider(width: 1), // Divider between player columns
-
-                  Expanded( // Player 2 Column
-
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start, // Center content vertically
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
-                            children: [
-                              Text(widget.playerNames[1], style: const TextStyle(fontSize: 24)), // Display Player 2 name
-                            ], 
-                          ), 
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
-                            children: [
-                              Text('Score: ${scores[widget.playerNames[1]].toString()}',), // Display Player 2 score
-                            ], 
-                          ), 
-                          SizedBox(
-                            height: 80,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
-                              children: [
-                                const SizedBox(height: 20),
-                                if(!isPlayer1Turn)
-                                  // New toggle buttons for multiplier
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF00703C),
-                                      foregroundColor: Colors.white,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        // Cycle through multipliers
-                                        multiplier = (multiplier % 3) + 1; // Cycle between 1, 2, and 3
-                                      });
-                                    },
-                                    child: Text('${multiplier}x'), // Display current multiplier
-                                  ),
-                                const SizedBox(width: 20),
-                                if(!isPlayer1Turn) // Change condition to check for Player 2's turn
-                                  Container(
-                                    width: 100, // Define a width
-                                    child: TextField(
-                                      controller: player2Controller, // Change controller to player2Controller
-                                      keyboardType: TextInputType.number,
-                                      textAlign: TextAlign.center,
-                                      decoration: InputDecoration(
-                                        hintText: 'Throw ${player2ThrowCount + 1}', // Change hint text for Player 2
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 20),
-                                if(!isPlayer1Turn) // Change condition to check for Player 2's turn
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF00703C),
-                                      foregroundColor: Colors.white,
-                                    ),
-                                    onPressed: () {
-                                      String value = player2Controller.text; // Change to player2Controller
-                                      _handlePlayerInput(value, false); // Change to false for Player 2
-                                      player2Controller.clear(); // Clear the input field after submission
-                                    },
-                                    child: const Text('Submit'), // Button text
-                                  ),
-                              ], 
-                            ),
-                          ),
-
-                          const SizedBox(height: 20), // Space between input and throws
-                          
-                          // Display throws for Player 2
-                          SingleChildScrollView(
-                            scrollDirection: Axis.vertical, // Set the scroll direction to vertical
-                            child: Column(
-                              children: throwScoreStorage
-                                  .map((round) => Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Text('Round ${throwScoreStorage.indexOf(round) + 1}: ', style: Theme.of(context).textTheme.bodyLarge),
-                                          ...round[1].map((throwValue) => Text('$throwValue ', style: Theme.of(context).textTheme.bodyLarge)).toList(), // Display Player 2's throws
-                                        ],
-                                      ))
-                                  .toList(),
-                            ),
-                          ),
-
-                        ],
-                      ),
-
-                  ),
+                  _buildPlayerColumn(widget.playerNames[0], player1Controller, player1ThrowCount, isPlayer1Turn, true),
+                  const VerticalDivider(width: 1),
+                  _buildPlayerColumn(widget.playerNames[1], player2Controller, player2ThrowCount, isPlayer2Turn, false),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
 
+  Widget _buildShowRulesButton(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF00703C),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => _showRules(context),
+            child: const Text('Show Rules'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPlayerColumn(String playerName, TextEditingController controller, int throwCount, bool isCurrentPlayer, bool isPlayer1) {
+    return Expanded(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          _buildPlayerNameRow(playerName),
+          _buildPlayerScoreRow(playerName),
+          _buildPlayerInputRow(controller, throwCount, isCurrentPlayer, isPlayer1),
+          const SizedBox(height: 20),
+          _buildPlayerThrowsDisplay(isPlayer1),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlayerNameRow(String playerName) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(playerName, style: const TextStyle(fontSize: 24)),
+      ],
+    );
+  }
+
+  Widget _buildPlayerScoreRow(String playerName) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text('Score: ${scores[playerName].toString()}'),
+      ],
+    );
+  }
+
+  Widget _buildPlayerInputRow(TextEditingController controller, int throwCount, bool isCurrentPlayer, bool isPlayer1) {
+    return SizedBox(
+      height: 80,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (isCurrentPlayer) _buildMultiplierButton(),
+          const SizedBox(width: 20),
+          if (isCurrentPlayer) _buildInputField(controller, throwCount),
+          const SizedBox(width: 20),
+          if (isCurrentPlayer) _buildSubmitButton(controller, isPlayer1),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMultiplierButton() {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF00703C),
+        foregroundColor: Colors.white,
+      ),
+      onPressed: () {
+        setState(() {
+          multiplier = (multiplier % 3) + 1;
+        });
+      },
+      child: Text('${multiplier}x'),
+    );
+  }
+
+  Widget _buildInputField(TextEditingController controller, int throwCount) {
+    return Container(
+      width: 100,
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        textAlign: TextAlign.center,
+        decoration: InputDecoration(
+          hintText: 'Throw ${throwCount + 1}',
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton(TextEditingController controller, bool isPlayer1) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF00703C),
+        foregroundColor: Colors.white,
+      ),
+      onPressed: () {
+        String value = controller.text;
+        int throwValue = int.tryParse(value) ?? 0;
+        _handlePlayerInput((throwValue * multiplier).toString(), isPlayer1);
+        controller.clear();
+      },
+      child: const Text('Submit'),
+    );
+  }
+
+  Widget _buildPlayerThrowsDisplay(bool isPlayer1) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: Column(
+        children: throwScoreStorage
+            .map((round) => Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Round ${throwScoreStorage.indexOf(round) + 1}: ', style: Theme.of(context).textTheme.bodyLarge),
+                    ...round[isPlayer1 ? 0 : 1].map((throwValue) => Text('$throwValue ', style: Theme.of(context).textTheme.bodyLarge)).toList(),
+                  ],
+                ))
+            .toList(),
       ),
     );
   }
