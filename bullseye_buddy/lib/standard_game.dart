@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dartboard_widget.dart';
+import 'dart:math';
 
 class standardGame extends StatefulWidget {
   final List<String> playerNames;
@@ -198,29 +200,54 @@ class _standardGameState extends State<standardGame> {
         title: const Text('Tracker'),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            _buildShowRulesButton(context),
-            Text('Round: $roundCounter', style: const TextStyle(fontSize: 40)),
-            const SizedBox(height: 20),
-            Expanded(
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: widget.playerNames.length,
-                separatorBuilder: (context, index) => const VerticalDivider(width: 1),
-                itemBuilder: (context, index) {
-                  return _buildPlayerColumn(
-                    widget.playerNames[index],
-                    playerControllers[index],
-                    playerThrowCounts[index],
-                    currentPlayerIndex == index,
-                    index,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              _buildShowRulesButton(context),
+              Text('Round: $roundCounter', style: const TextStyle(fontSize: 40)),
+              const SizedBox(height: 20),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final numPlayers = widget.playerNames.length;
+                  final maxColumnsPerRow = 3;
+                  final horizontalPadding = 32.0 * maxColumnsPerRow;
+                  final maxWidth = 400.0;
+                  final minWidth = 220.0;
+                  final columnsInRow = numPlayers < maxColumnsPerRow ? numPlayers : maxColumnsPerRow;
+                  final availableWidth = (constraints.maxWidth - horizontalPadding) / columnsInRow;
+                  final columnWidth = availableWidth.clamp(minWidth, maxWidth);
+                  final estimatedPlayerInfoHeight = 80.0;
+                  final estimatedThrowsHeight = 60.0;
+                  final availableHeight = constraints.maxHeight - estimatedPlayerInfoHeight - estimatedThrowsHeight - 48.0;
+                  final dartboardSize = min(
+                    columnWidth * 0.9,
+                    availableHeight,
+                  ).clamp(140.0, 260.0);
+                  return Center(
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 32.0,
+                      runSpacing: 32.0,
+                      children: List.generate(numPlayers, (index) =>
+                        SizedBox(
+                          width: columnWidth,
+                          child: _buildPlayerColumn(
+                            widget.playerNames[index],
+                            playerControllers[index],
+                            playerThrowCounts[index],
+                            currentPlayerIndex == index,
+                            index,
+                            dartboardSize: dartboardSize,
+                          ),
+                        ),
+                      ),
+                    ),
                   );
                 },
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -245,19 +272,17 @@ class _standardGameState extends State<standardGame> {
     );
   }
 
-  Widget _buildPlayerColumn(String playerName, TextEditingController controller, int throwCount, bool isCurrentPlayer, int playerIndex) {
-    return SizedBox(
-      width: 300,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          _buildPlayerNameRow(playerName),
-          _buildPlayerScoreRow(playerName),
-          _buildPlayerInputRow(controller, throwCount, isCurrentPlayer, playerIndex),
-          const SizedBox(height: 20),
-          _buildPlayerThrowsDisplay(playerIndex),
-        ],
-      ),
+  Widget _buildPlayerColumn(String playerName, TextEditingController controller, int throwCount, bool isCurrentPlayer, int playerIndex, {double dartboardSize = 320}) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        _buildPlayerNameRow(playerName),
+        _buildPlayerScoreRow(playerName),
+        const SizedBox(height: 12),
+        _buildPlayerInputRow(controller, throwCount, isCurrentPlayer, playerIndex, dartboardSize: dartboardSize),
+        const SizedBox(height: 20),
+        _buildPlayerThrowsDisplay(playerIndex),
+      ],
     );
   }
 
@@ -279,69 +304,44 @@ class _standardGameState extends State<standardGame> {
     );
   }
 
-  Widget _buildPlayerInputRow(TextEditingController controller, int throwCount, bool isCurrentPlayer, int playerIndex) {
+  Widget _buildPlayerInputRow(TextEditingController controller, int throwCount, bool isCurrentPlayer, int playerIndex, {double dartboardSize = 320}) {
     return SizedBox(
-      height: 80,
+      height: dartboardSize + 20,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (isCurrentPlayer) _buildMultiplierButton(),
-          const SizedBox(width: 20),
-          if (isCurrentPlayer) _buildInputField(controller, throwCount),
-          const SizedBox(width: 20),
-          if (isCurrentPlayer) _buildSubmitButton(controller, playerIndex),
+          if (isCurrentPlayer)
+            DartboardWidget(
+              size: dartboardSize,
+              onZoneSelected: (segment, multiplier) async {
+                final score = segment == 25 ? (multiplier == 2 ? 50 : 25) : segment * multiplier;
+                final label = segment == 25
+                  ? (multiplier == 2 ? 'Bullseye (50)' : 'Bull (25)')
+                  : '${segment} × $multiplier = $score';
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Confirm Throw'),
+                    content: Text('You selected: $label.\nConfirm this throw?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: const Text('Confirm'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true) {
+                  _handlePlayerInput(score.toString(), playerIndex);
+                }
+              },
+            ),
         ],
       ),
-    );
-  }
-
-  Widget _buildMultiplierButton() {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF00703C),
-        foregroundColor: Colors.white,
-      ),
-      onPressed: () {
-        setState(() {
-          multiplier = (multiplier % 3) + 1;
-        });
-      },
-      child: Text('${multiplier}x'),
-    );
-  }
-
-  Widget _buildInputField(TextEditingController controller, int throwCount) {
-    return Container(
-      width: 100,
-      child: TextField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        textAlign: TextAlign.center,
-        decoration: InputDecoration(
-          labelText: 'Throw ${throwCount + 1}',
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          floatingLabelBehavior: FloatingLabelBehavior.auto,
-          floatingLabelAlignment: FloatingLabelAlignment.center,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubmitButton(TextEditingController controller, int playerIndex) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF00703C),
-        foregroundColor: Colors.white,
-      ),
-      onPressed: () {
-        String value = controller.text;
-        int throwValue = int.tryParse(value) ?? 0;
-        _handlePlayerInput((throwValue * multiplier).toString(), playerIndex);
-        controller.clear();
-      },
-      child: const Text('Submit'),
     );
   }
 
