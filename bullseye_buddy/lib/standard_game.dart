@@ -15,16 +15,10 @@ class _standardGameState extends State<standardGame> {
   Map<String, int> scores = {};
   late List<List<List<int>>> throwScoreStorage;
 
-  final TextEditingController player1Controller = TextEditingController();
-  final TextEditingController player2Controller = TextEditingController();
-
-  int player1ThrowCount = 0;
-  int player2ThrowCount = 0;
-
-  int originalPlayer1Score = 301; // Default score
-  int originalPlayer2Score = 301; // Default score
-
-  String currentPlayer = ''; // Track the current player
+  late List<TextEditingController> playerControllers;
+  late List<int> playerThrowCounts;
+  late List<int> originalPlayerScores;
+  int currentPlayerIndex = 0;
   int multiplier = 1;
 
   @override
@@ -32,7 +26,10 @@ class _standardGameState extends State<standardGame> {
     super.initState();
     initializeScores();
     initializeThrowStorage();
-    currentPlayer = widget.playerNames[0]; // Set initial player
+    playerControllers = List.generate(widget.playerNames.length, (_) => TextEditingController());
+    playerThrowCounts = List.filled(widget.playerNames.length, 0);
+    originalPlayerScores = List.filled(widget.playerNames.length, 301);
+    currentPlayerIndex = 0;
   }
 
   void initializeScores() {
@@ -45,16 +42,14 @@ class _standardGameState extends State<standardGame> {
     }
 
     scores = {
-      widget.playerNames[0]: initialScoreValue,
-      widget.playerNames[1]: initialScoreValue,
+      for (var name in widget.playerNames) name: initialScoreValue,
     };
-    originalPlayer1Score = initialScoreValue;
-    originalPlayer2Score = initialScoreValue;
+    originalPlayerScores = List.filled(widget.playerNames.length, initialScoreValue);
   }
 
   void initializeThrowStorage() {
     throwScoreStorage = [
-      [[], []],
+      List.generate(widget.playerNames.length, (_) => []),
     ];
   }
 
@@ -88,16 +83,15 @@ class _standardGameState extends State<standardGame> {
   void _nextRound() {
     setState(() {
       roundCounter++;
-      throwScoreStorage.add([[], []]);
+      throwScoreStorage.add(List.generate(widget.playerNames.length, (_) => []));
       print('New Round # $roundCounter');
-
-      player1ThrowCount = 0; // Reset Player 1's throw count
-      player2ThrowCount = 0; // Reset Player 2's throw count
-      _setCurrentPlayer(widget.playerNames[0]); // Start with Player 1
+      playerThrowCounts = List.filled(widget.playerNames.length, 0);
+      _setCurrentPlayer(0);
     });
   }
 
-  void _updateScore(String player, int throwScore) {
+  void _updateScore(int playerIndex, int throwScore) {
+    String player = widget.playerNames[playerIndex];
     int currentScore = scores[player] ?? 0;
     int newScore = currentScore - throwScore;
 
@@ -107,44 +101,30 @@ class _standardGameState extends State<standardGame> {
       } else if (newScore == 0) {
         _gameWin(player);
       } else {
-        _bustPlayer(player);
+        _bustPlayer(playerIndex);
       }
     });
   }
 
-  void _bustPlayer(String player) {
-    if (player == widget.playerNames[0]) {
-      scores[player] = originalPlayer1Score; // Reset score to original for Player 1
-      print('$player busted! Score reset to $originalPlayer1Score. Ending turn.');
-      _setCurrentPlayer(widget.playerNames[1]); // Switch to Player 2
-      player1ThrowCount = 0; // Reset Player 1's throw count
-      player2ThrowCount = 0;
-    } else {
-      scores[player] = originalPlayer2Score; // Reset score to original for Player 2
-      print('$player busted! Score reset to $originalPlayer2Score. Ending turn.');
-      player2ThrowCount = 0; // Reset Player 2's throw count
-      _nextRound();
-    }
+  void _bustPlayer(int playerIndex) {
+    String player = widget.playerNames[playerIndex];
+    scores[player] = originalPlayerScores[playerIndex];
+    print('$player busted! Score reset to ${originalPlayerScores[playerIndex]}. Ending turn.');
+    playerThrowCounts[playerIndex] = 0;
+    _nextPlayer();
   }
 
-  void _addThrow(String player, int throwValue) {
-    int playerIndex = widget.playerNames.indexOf(player);
-    if (playerIndex != -1) {
-      throwScoreStorage[roundCounter - 1][playerIndex].add(throwValue);
-      _updateScore(player, throwValue);
-    } else {
-      print('Player not found: $player');
-    }
+  void _addThrow(int playerIndex, int throwValue) {
+    throwScoreStorage[roundCounter - 1][playerIndex].add(throwValue);
+    _updateScore(playerIndex, throwValue);
   }
 
-  void _handlePlayerInput(String value, bool isPlayer1) {
+  void _handlePlayerInput(String value, int playerIndex) {
     if (value.isNotEmpty) {
       int? throwValue = int.tryParse(value);
       if (throwValue != null) {
-        if (currentPlayer == widget.playerNames[0]) {
-          _processPlayerThrow(widget.playerNames[0], throwValue, true);
-        } else if (currentPlayer == widget.playerNames[1]) {
-          _processPlayerThrow(widget.playerNames[1], throwValue, false);
+        if (currentPlayerIndex == playerIndex) {
+          _processPlayerThrow(playerIndex, throwValue);
         } else {
           print('It\'s not your turn!');
         }
@@ -154,37 +134,23 @@ class _standardGameState extends State<standardGame> {
     }
   }
 
-  void _processPlayerThrow(String player, int throwValue, bool isPlayer1) {
-    int currentThrowCount = isPlayer1 ? player1ThrowCount : player2ThrowCount;
+  void _processPlayerThrow(int playerIndex, int throwValue) {
+    int currentThrowCount = playerThrowCounts[playerIndex];
 
-    if (isPlayer1 && currentThrowCount == 0) {
-      originalPlayer1Score = scores[player] ?? 0; // Store original score at the start of Player 1's turn
-    } else if (!isPlayer1 && currentThrowCount == 0) {
-      originalPlayer2Score = scores[player] ?? 0; // Store original score at the start of Player 2's turn
+    if (currentThrowCount == 0) {
+      originalPlayerScores[playerIndex] = scores[widget.playerNames[playerIndex]] ?? 0;
     }
 
-    _addThrow(player, throwValue);
+    _addThrow(playerIndex, throwValue);
 
-    if (isPlayer1) {
-      player1ThrowCount++;
-      player1Controller.clear();
-      if (player1ThrowCount >= 3) {
-        _setCurrentPlayer(widget.playerNames[1]); // Switch to Player 2
-        player1ThrowCount = 0; // Reset Player 1's throw count
-        print('${widget.playerNames[0]} has completed 3 throws. Now it\'s Player 2\'s turn.');
-      }
-    } else {
-      player2ThrowCount++;
-      player2Controller.clear();
-      if (player2ThrowCount >= 3) {
-        player2ThrowCount = 0; // Reset Player 2's throw count
-        _nextRound(); // Only call _nextRound after Player 2 completes their throws
-        print('${widget.playerNames[1]} has completed 3 throws. Now it\'s a new round.');
-      }
+    playerThrowCounts[playerIndex]++;
+    playerControllers[playerIndex].clear();
+    if (playerThrowCounts[playerIndex] >= 3) {
+      playerThrowCounts[playerIndex] = 0;
+      _nextPlayer();
     }
 
-    // Print the throw number after submission
-    print('${isPlayer1 ? "${widget.playerNames[0]}" : "${widget.playerNames[1]}"} has submitted throw ${currentThrowCount + 1}: $throwValue');
+    print('${widget.playerNames[playerIndex]} has submitted throw ${currentThrowCount + 1}: $throwValue');
   }
 
   void _gameWin(String player) {
@@ -210,10 +176,18 @@ class _standardGameState extends State<standardGame> {
     );
   }
 
-  void _setCurrentPlayer(String player) {
+  void _setCurrentPlayer(int playerIndex) {
     setState(() {
-      currentPlayer = player;
+      currentPlayerIndex = playerIndex;
     });
+  }
+
+  void _nextPlayer() {
+    if (currentPlayerIndex < widget.playerNames.length - 1) {
+      _setCurrentPlayer(currentPlayerIndex + 1);
+    } else {
+      _nextRound();
+    }
   }
 
   @override
@@ -231,12 +205,19 @@ class _standardGameState extends State<standardGame> {
             Text('Round: $roundCounter', style: const TextStyle(fontSize: 40)),
             const SizedBox(height: 20),
             Expanded(
-              child: Row(
-                children: [
-                  _buildPlayerColumn(widget.playerNames[0], player1Controller, player1ThrowCount, currentPlayer == widget.playerNames[0], true),
-                  const VerticalDivider(width: 1),
-                  _buildPlayerColumn(widget.playerNames[1], player2Controller, player2ThrowCount, currentPlayer == widget.playerNames[1], false),
-                ],
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: widget.playerNames.length,
+                separatorBuilder: (context, index) => const VerticalDivider(width: 1),
+                itemBuilder: (context, index) {
+                  return _buildPlayerColumn(
+                    widget.playerNames[index],
+                    playerControllers[index],
+                    playerThrowCounts[index],
+                    currentPlayerIndex == index,
+                    index,
+                  );
+                },
               ),
             ),
           ],
@@ -264,16 +245,17 @@ class _standardGameState extends State<standardGame> {
     );
   }
 
-  Widget _buildPlayerColumn(String playerName, TextEditingController controller, int throwCount, bool isCurrentPlayer, bool isPlayer1) {
-    return Expanded(
+  Widget _buildPlayerColumn(String playerName, TextEditingController controller, int throwCount, bool isCurrentPlayer, int playerIndex) {
+    return SizedBox(
+      width: 300,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
           _buildPlayerNameRow(playerName),
           _buildPlayerScoreRow(playerName),
-          _buildPlayerInputRow(controller, throwCount, isCurrentPlayer, isPlayer1),
+          _buildPlayerInputRow(controller, throwCount, isCurrentPlayer, playerIndex),
           const SizedBox(height: 20),
-          _buildPlayerThrowsDisplay(isPlayer1),
+          _buildPlayerThrowsDisplay(playerIndex),
         ],
       ),
     );
@@ -297,7 +279,7 @@ class _standardGameState extends State<standardGame> {
     );
   }
 
-  Widget _buildPlayerInputRow(TextEditingController controller, int throwCount, bool isCurrentPlayer, bool isPlayer1) {
+  Widget _buildPlayerInputRow(TextEditingController controller, int throwCount, bool isCurrentPlayer, int playerIndex) {
     return SizedBox(
       height: 80,
       child: Row(
@@ -307,7 +289,7 @@ class _standardGameState extends State<standardGame> {
           const SizedBox(width: 20),
           if (isCurrentPlayer) _buildInputField(controller, throwCount),
           const SizedBox(width: 20),
-          if (isCurrentPlayer) _buildSubmitButton(controller, isPlayer1),
+          if (isCurrentPlayer) _buildSubmitButton(controller, playerIndex),
         ],
       ),
     );
@@ -321,10 +303,10 @@ class _standardGameState extends State<standardGame> {
       ),
       onPressed: () {
         setState(() {
-          multiplier = (multiplier % 3) + 1; // Cycle through multipliers
+          multiplier = (multiplier % 3) + 1;
         });
       },
-      child: Text('${multiplier}x'), // Display current multiplier
+      child: Text('${multiplier}x'),
     );
   }
 
@@ -336,18 +318,18 @@ class _standardGameState extends State<standardGame> {
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
         decoration: InputDecoration(
-          labelText: 'Throw ${throwCount + 1}', // Display which throw it is
+          labelText: 'Throw ${throwCount + 1}',
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8), // Rounded border
+            borderRadius: BorderRadius.circular(8),
           ),
-          floatingLabelBehavior: FloatingLabelBehavior.auto, // Move label on focus
+          floatingLabelBehavior: FloatingLabelBehavior.auto,
           floatingLabelAlignment: FloatingLabelAlignment.center,
         ),
       ),
     );
   }
 
-  Widget _buildSubmitButton(TextEditingController controller, bool isPlayer1) {
+  Widget _buildSubmitButton(TextEditingController controller, int playerIndex) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFF00703C),
@@ -356,14 +338,14 @@ class _standardGameState extends State<standardGame> {
       onPressed: () {
         String value = controller.text;
         int throwValue = int.tryParse(value) ?? 0;
-        _handlePlayerInput((throwValue * multiplier).toString(), isPlayer1);
+        _handlePlayerInput((throwValue * multiplier).toString(), playerIndex);
         controller.clear();
       },
       child: const Text('Submit'),
     );
   }
 
-  Widget _buildPlayerThrowsDisplay(bool isPlayer1) {
+  Widget _buildPlayerThrowsDisplay(int playerIndex) {
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
       child: Column(
@@ -372,7 +354,7 @@ class _standardGameState extends State<standardGame> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text('Round ${throwScoreStorage.indexOf(round) + 1}: ', style: Theme.of(context).textTheme.bodyLarge),
-                    ...round[isPlayer1 ? 0 : 1].map((throwValue) => Text('$throwValue ', style: Theme.of(context).textTheme.bodyLarge)).toList(),
+                    ...round[playerIndex].map((throwValue) => Text('$throwValue ', style: Theme.of(context).textTheme.bodyLarge)).toList(),
                   ],
                 ))
             .toList(),
