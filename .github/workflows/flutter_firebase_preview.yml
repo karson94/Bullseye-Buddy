@@ -1,13 +1,15 @@
-name: Flutter Firebase Deploy
+name: Flutter Firebase Preview
 
 on:
-  push:
+  pull_request:
     branches:
       - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
 
     steps:
       - name: Checkout code
@@ -28,9 +30,17 @@ jobs:
         run: |
           flutter build web
 
-      - name: Deploy to Firebase
+      - name: Deploy to Firebase Preview Channel
+        id: firebase_deploy
         uses: FirebaseExtended/action-hosting-deploy@v0.9.0
         with:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
-          channelId: live
+          channelId: preview
+
+      - name: Comment preview URL on PR
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            🚀 Firebase Preview: [View Preview](${{ steps.firebase_deploy.outputs.details_url }})
