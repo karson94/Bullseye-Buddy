@@ -1,0 +1,44 @@
+name: Flutter Firebase Preview
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install Flutter
+        run: |
+          git clone https://github.com/flutter/flutter.git -b stable
+          echo "${{ github.workspace }}/flutter/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        working-directory: bullseye_buddy
+        run: |
+          flutter pub get
+
+      - name: Build web app
+        working-directory: bullseye_buddy
+        run: |
+          flutter build web
+
+      - name: Deploy to Firebase Preview Channel
+        id: firebase_deploy
+        uses: FirebaseExtended/action-hosting-deploy@v0.9.0
+        with:
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+          channelId: preview
+
+      - name: Comment preview URL on PR
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            🚀 Firebase Preview: [View Preview](${{ steps.firebase_deploy.outputs.details_url }})
