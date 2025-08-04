@@ -17,4 +17,4 @@
 - [ ] Create Database
     - [ ] Add accounts/authentication
 - [ ] Show mini heatmap of player stats (toggle via button)
-    
+
